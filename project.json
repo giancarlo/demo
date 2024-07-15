@@ -1,0 +1,10 @@
+{
+	"watch": {
+		"rules": {
+			"build": {
+				"files": ["**/*"],
+				"tasks": "npm run build"
+			}
+		}
+	}
+}
