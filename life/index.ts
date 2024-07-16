@@ -1,4 +1,4 @@
-import { Node, engine } from '../engine2/index.js';
+import { Node, engine } from '../engine/index.js';
 
 const Black = [0, 0, 0, 255] as const;
 const White = [255, 255, 255, 255] as const;

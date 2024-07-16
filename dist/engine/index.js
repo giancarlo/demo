@@ -276,7 +276,7 @@ export async function engine(p) {
         if (fill) {
             render(() => {
                 const gl = ctx.webgl2.gl;
-                ctx.webgl2.color = fill;
+                ctx.webgl2.color = node.fill || whiteColor;
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, whiteTexture);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);

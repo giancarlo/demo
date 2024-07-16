@@ -16,7 +16,7 @@ export interface Box extends Rect {
 }
 
 export type Matrix = Float32Array;
-export type Color = [number, number, number, number];
+export type Color = readonly [number, number, number, number];
 
 export type RendererContext = ReturnType<typeof renderer>['renderer'];
 export type Webgl2Context = ReturnType<typeof webgl2>['webgl2'];
@@ -511,7 +511,7 @@ export async function engine(p: { width: number; height: number; root: Node }) {
 		if (fill) {
 			render(() => {
 				const gl = ctx.webgl2.gl;
-				ctx.webgl2.color = fill;
+				ctx.webgl2.color = node.fill || whiteColor;
 				gl.activeTexture(gl.TEXTURE0);
 				gl.bindTexture(gl.TEXTURE_2D, whiteTexture);
 				gl.drawArrays(gl.TRIANGLES, 0, 6);
