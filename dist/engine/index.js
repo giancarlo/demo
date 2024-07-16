@@ -262,7 +262,8 @@ export async function engine(p) {
     };
     const whiteTexture = ctx.webgl2.colorTexture([255, 255, 255, 255]);
     const render = ctx.renderer.render;
-    document.body.append(ctx.webgl2.gl.canvas);
+    const canvas = ctx.webgl2.gl.canvas;
+    document.body.append(canvas);
     async function load(node) {
         const { box, image, children, update, fill } = node;
         if (update)
@@ -299,6 +300,10 @@ export async function engine(p) {
     return {
         start: ctx.renderer.start,
         pause: ctx.renderer.stop,
+        destroy() {
+            ctx.renderer.stop();
+            canvas.remove();
+        },
     };
 }
 export function renderer() {
