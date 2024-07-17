@@ -475,11 +475,7 @@ export function Box(box?: Partial<Box>) {
 	};
 }
 
-/**
- * Renders an image at the specified location.
- * Takes an image source (`src`) as input.
- */
-export function image({ src }: { src: string | TexImageSource }) {
+export function texture(p: { src: TexImageSource; dirty?: boolean }) {
 	return async ({
 		webgl2,
 		renderer,
@@ -488,7 +484,33 @@ export function image({ src }: { src: string | TexImageSource }) {
 		renderer: RendererContext;
 	}) => {
 		const gl = webgl2.gl;
-		const img = typeof src === 'string' ? await loadImage(src) : src;
+		const texture = Texture(gl, { src: p.src });
+
+		renderer.render(() => {
+			if (p.dirty) {
+				updateTexture(gl, { texture, src: p.src });
+			}
+			webgl2.setTexture(texture);
+			webgl2.color = whiteColor;
+			gl.drawArrays(gl.TRIANGLES, 0, 6);
+		});
+	};
+}
+
+/**
+ * Renders an image at the specified location.
+ * Takes an image source (`src`) as input.
+ */
+export function image(p: { src: string | TexImageSource }) {
+	return async ({
+		webgl2,
+		renderer,
+	}: {
+		webgl2: Webgl2Context;
+		renderer: RendererContext;
+	}) => {
+		const gl = webgl2.gl;
+		const img = typeof p.src === 'string' ? await loadImage(p.src) : p.src;
 		const texture = Texture(webgl2.gl, { src: img });
 
 		renderer.render(() => {
@@ -501,15 +523,12 @@ export function image({ src }: { src: string | TexImageSource }) {
 
 export interface Node {
 	box?: Partial<Box>;
-	image?: { src: string };
-	children?: Record<string | number, Readonly<Node>>;
-	update?(node: Node): void;
+	image?: { src: string | TexImageSource };
+	texture?: { src: TexImageSource; dirty?: boolean };
+	children?: Record<string | number, Node>;
+	update?(node: this): void;
 	fill?: Color;
 }
-
-const components = {
-	image,
-};
 
 export async function engine(p: { width: number; height: number; root: Node }) {
 	const ctx = {
@@ -520,10 +539,15 @@ export async function engine(p: { width: number; height: number; root: Node }) {
 	const render = ctx.renderer.render;
 	const canvas = ctx.webgl2.gl.canvas as HTMLCanvasElement;
 
+	const components = {
+		image,
+		texture,
+	} as const;
+
 	document.body.append(canvas);
 
 	async function load(node: Node) {
-		const { image, children, update } = node;
+		const { image, children, update, texture } = node;
 		if (update) render(() => update(node));
 		if (node.box) {
 			let M: Matrix, box: Partial<Box>;
@@ -542,6 +566,7 @@ export async function engine(p: { width: number; height: number; root: Node }) {
 				gl.drawArrays(gl.TRIANGLES, 0, 6);
 			});
 		}
+		if (texture) components.texture(texture)(ctx);
 		if (image) await components.image(image)(ctx);
 		if (children) {
 			const nodes = Array.isArray(children)

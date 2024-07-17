@@ -277,29 +277,33 @@ function ColorTexture(gl: WebGL2RenderingContext, color: Color) {
  */
 export function webgl2({ width, height }: { width: number; height: number }) {
 	const { gl, glProgram } = Program({
-		frag: `
+		frag: `#version 300 es
 precision mediump float;
+
 uniform sampler2D u_texture;
-varying vec2 v_texcoord;
+in vec2 v_texcoord;
 uniform vec4 u_color;
 
+out vec4 outColor;
+
 void main() {
-   gl_FragColor = texture2D(u_texture, v_texcoord) * (u_color/255.0);
-}
-		`,
-		vtx: `
-attribute vec4 a_position;
-attribute vec2 a_texcoord;
+    outColor = texture(u_texture, v_texcoord) * (u_color / 255.0);
+}`,
+		vtx: `#version 300 es
+precision mediump float;
+
+in vec4 a_position;
+in vec2 a_texcoord;
 uniform mat4 u_matrix;
 uniform mat4 p_matrix;
-varying vec2 v_texcoord;
 uniform mat4 u_textureMatrix;
+
+out vec2 v_texcoord;
 
 void main() {
    gl_Position = p_matrix * u_matrix * a_position;
    v_texcoord = (u_textureMatrix * vec4(a_texcoord, 0, 1)).xy;
-}
-		`,
+}`,
 		width,
 		height,
 	});
@@ -479,7 +483,7 @@ export function image({ src }: { src: string | TexImageSource }) {
 
 export interface Node {
 	box?: Partial<Box>;
-	image?: { src: string };
+	image?: { src: string | TexImageSource };
 	children?: Record<string, Readonly<Node>>;
 	update?(node: Node): void;
 	fill?: Color;

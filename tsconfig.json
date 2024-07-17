@@ -14,5 +14,5 @@
 		"composite": true,
 		"skipLibCheck": true
 	},
-	"include": ["**/index.ts"]
+	"include": ["**/*.ts"]
 }
