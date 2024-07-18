@@ -1,21 +1,19 @@
-import { Node, engine } from '../engine/index.js';
+import { Color, engine } from '../engine/index2.js';
 
 const Black = [0, 0, 0, 255] as const;
 const White = [255, 255, 255, 255] as const;
 
-export default function (cols = 128, rows = 80, seed = 1000) {
+export default async function (cols = 320, rows = 240, seed = 100000) {
 	const width = 640;
 	const height = 480;
-	const W = (width / cols) | 0,
-		H = (height / rows) | 0,
-		LEN = cols * rows,
-		map: Node[] = [];
+	const LEN = cols * rows,
+		map = new ImageData(cols, rows);
 	let points = new Int8Array(LEN);
 	let newPoints = new Int8Array(LEN);
 
-	/* Returns 1 if cell is alive */
 	function get(i: number) {
-		return i < 0 || i >= LEN ? 0 : points[i];
+		if (i < 0 || i >= LEN) i = ((i % LEN) + LEN) % LEN;
+		return points[i];
 	}
 
 	/* Returns sum of alive cells */
@@ -32,40 +30,43 @@ export default function (cols = 128, rows = 80, seed = 1000) {
 		);
 	}
 
+	function setColor(pos: number, color: Color) {
+		map.data.set(color, pos * 4);
+	}
+
 	for (let y = 0; y < rows; y++)
 		for (let x = 0; x < cols; x++) {
-			const node = {
-				box: { x: x * W, y: y * H, w: W, h: H },
-				fill: White,
-			};
 			const pos = y * cols + x;
-			map[pos] = node;
+			setColor(pos, White);
 			points[pos] = 0;
 		}
 
 	while (seed--) {
 		const pos = (Math.random() * LEN) | 0;
-		map[pos].fill = Black;
+		setColor(pos, Black);
 		points[pos] = 1;
 	}
 
-	return engine({
+	const { canvas, start } = await engine({
 		width,
 		height,
 		root: {
-			children: map as Record<number, Node>,
-			update() {
+			box: { w: width, h: height },
+			texture: { src: map, magFilter: WebGL2RenderingContext.LINEAR },
+			update(node) {
 				for (let i = 0; i < LEN; i++) {
 					const a = neighbours(i);
 					const live = (a === 2 && points[i]) || a === 3;
 					newPoints[i] = live ? 1 : 0;
-					map[i].fill = live ? Black : White;
+					setColor(i, live ? Black : White);
 				}
-
 				const a = points;
 				points = newPoints;
+				node.texture!.dirty = true;
 				newPoints = a;
 			},
 		},
 	});
+	document.body.append(canvas);
+	start();
 }

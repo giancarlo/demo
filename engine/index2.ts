@@ -22,9 +22,6 @@ export interface Box extends Rect {
 export type Matrix = Float32Array;
 export type Color = readonly [number, number, number, number];
 
-export type RendererContext = ReturnType<typeof renderer>['renderer'];
-export type Webgl2Context = ReturnType<typeof webgl2>['webgl2'];
-
 export const identity = new Float32Array([
 	1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
 ]) as Readonly<Matrix>;
@@ -220,11 +217,8 @@ export function multiply(
 
 export function updateTexture(
 	gl: WebGL2RenderingContext,
-	{
-		texture,
-		internalFormat,
-		src,
-	}: { texture: WebGLTexture; internalFormat?: GLenum; src: TexImageSource },
+	texture: WebGLTexture,
+	{ internalFormat, src }: { internalFormat?: GLenum; src: TexImageSource },
 ) {
 	gl.bindTexture(gl.TEXTURE_2D, texture);
 	gl.texImage2D(
@@ -237,31 +231,40 @@ export function updateTexture(
 	);
 }
 
+export interface TextureOptions {
+	src?: TexImageSource;
+	internalFormat?: GLenum;
+	minFilter?: GLenum;
+	magFilter?: GLenum;
+	wrapS?: GLenum;
+	wrapT?: GLenum;
+}
+
 /**
  * This function creates a WebGL texture, sets its parameters, and optionally uploads the provided image source.
  */
-export function Texture(
-	gl: WebGL2RenderingContext,
-	{
-		src,
-		internalFormat,
-		minFilter,
-	}: {
-		src?: TexImageSource;
-		internalFormat?: GLenum;
-		minFilter?: number;
-	},
-) {
-	minFilter ??= gl.LINEAR;
+export function Texture(gl: WebGL2RenderingContext, o: TextureOptions) {
+	o.minFilter ??= gl.LINEAR;
+	o.magFilter ??= o.minFilter;
+	o.wrapS ??= gl.CLAMP_TO_EDGE;
+	o.wrapT ??= o.wrapS;
 
 	const texture = gl.createTexture();
 	if (!texture) throw new Error('Could not create texture');
 	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, minFilter);
-	if (src) updateTexture(gl, { texture, internalFormat, src });
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, o.wrapS);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, o.wrapT);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, o.minFilter);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, o.magFilter);
+	if (o.src)
+		gl.texImage2D(
+			gl.TEXTURE_2D,
+			0,
+			o.internalFormat ?? gl.RGBA,
+			o.internalFormat ?? gl.RGBA,
+			gl.UNSIGNED_BYTE,
+			o.src,
+		);
 
 	return texture;
 }
@@ -393,34 +396,32 @@ void main() {
 	gl.activeTexture(gl.TEXTURE0);
 
 	return {
-		webgl2: {
-			gl,
-			pushMatrix(m: Matrix) {
-				matrixStack.push(M);
-				if (m !== identity) {
-					M = M === identity ? m : multiply(M, m);
-					gl.uniformMatrix4fv(matrixLocation, false, M);
-				}
-			},
-			popMatrix() {
-				const M2 = matrixStack.pop();
-				if (!M2) throw new Error('Matrix stack empty');
-				M = M2;
-				gl.uniformMatrix4fv(matrixLocation, false, M2);
-			},
-			get color() {
-				return u_color;
-			},
-			set color(color: Color) {
-				if (color !== u_color)
-					gl.uniform4fv(colorLocation, (u_color = color));
-			},
-			setTexture(texture: WebGLTexture) {
-				if (u_texture !== texture) {
-					gl.bindTexture(gl.TEXTURE_2D, texture);
-					u_texture = texture;
-				}
-			},
+		gl,
+		pushMatrix(m: Matrix) {
+			matrixStack.push(M);
+			if (m !== identity) {
+				M = M === identity ? m : multiply(M, m);
+				gl.uniformMatrix4fv(matrixLocation, false, M);
+			}
+		},
+		popMatrix() {
+			const M2 = matrixStack.pop();
+			if (!M2) throw new Error('Matrix stack empty');
+			M = M2;
+			gl.uniformMatrix4fv(matrixLocation, false, M2);
+		},
+		get color() {
+			return u_color;
+		},
+		set color(color: Color) {
+			if (color !== u_color)
+				gl.uniform4fv(colorLocation, (u_color = color));
+		},
+		setTexture(texture: WebGLTexture) {
+			if (u_texture !== texture) {
+				gl.bindTexture(gl.TEXTURE_2D, texture);
+				u_texture = texture;
+			}
 		},
 	};
 }
@@ -475,116 +476,101 @@ export function Box(box?: Partial<Box>) {
 	};
 }
 
-export function texture(p: { src: TexImageSource; dirty?: boolean }) {
-	return async ({
-		webgl2,
-		renderer,
-	}: {
-		webgl2: Webgl2Context;
-		renderer: RendererContext;
-	}) => {
-		const gl = webgl2.gl;
-		const texture = Texture(gl, { src: p.src });
-
-		renderer.render(() => {
-			if (p.dirty) {
-				updateTexture(gl, { texture, src: p.src });
-			}
-			webgl2.setTexture(texture);
-			webgl2.color = whiteColor;
-			gl.drawArrays(gl.TRIANGLES, 0, 6);
-		});
-	};
-}
-
-/**
- * Renders an image at the specified location.
- * Takes an image source (`src`) as input.
- */
-export function image(p: { src: string | TexImageSource }) {
-	return async ({
-		webgl2,
-		renderer,
-	}: {
-		webgl2: Webgl2Context;
-		renderer: RendererContext;
-	}) => {
-		const gl = webgl2.gl;
-		const img = typeof p.src === 'string' ? await loadImage(p.src) : p.src;
-		const texture = Texture(webgl2.gl, { src: img });
-
-		renderer.render(() => {
-			webgl2.setTexture(texture);
-			webgl2.color = whiteColor;
-			gl.drawArrays(gl.TRIANGLES, 0, 6);
-		});
-	};
-}
+export type Mutable = { dirty?: boolean };
+export type TextureComponent = TextureOptions & {
+	src: TexImageSource;
+} & Mutable;
+export type ImageComponent = TextureOptions & {
+	readonly src: TexImageSource | string;
+};
+export type FillComponent = {
+	color: Color;
+} & Mutable;
+export type BoxComponent = Partial<Box> & Mutable;
 
 export interface Node {
-	box?: Partial<Box>;
-	image?: { src: string | TexImageSource };
-	texture?: { src: TexImageSource; dirty?: boolean };
+	box?: BoxComponent;
+	image?: ImageComponent;
+	texture?: TextureComponent;
 	children?: Record<string | number, Node>;
 	update?(node: this): void;
-	fill?: Color;
+	fill?: FillComponent;
 }
 
-export async function engine(p: { width: number; height: number; root: Node }) {
-	const ctx = {
-		...webgl2(p),
-		...renderer(),
-	};
-	const whiteTexture = ColorTexture(ctx.webgl2.gl, [255, 255, 255, 255]);
-	const render = ctx.renderer.render;
-	const canvas = ctx.webgl2.gl.canvas as HTMLCanvasElement;
+export interface EngineOptions<T> {
+	width: number;
+	height: number;
+	readonly root: T;
+}
 
-	const components = {
-		image,
-		texture,
-	} as const;
+export async function engine<T extends Node>(p: EngineOptions<T>) {
+	const program = webgl2(p);
+	const { render, start, stop } = renderer();
+	const gl = program.gl;
+	const whiteTexture = ColorTexture(gl, [255, 255, 255, 255]);
+	const canvas = gl.canvas as HTMLCanvasElement;
 
-	document.body.append(canvas);
+	/**
+	 * Renders an image at the specified location.
+	 * Takes an image source (`src`) as input.
+	 */
+	async function image(p: ImageComponent) {
+		const img = typeof p.src === 'string' ? await loadImage(p.src) : p.src;
+		texture({ ...p, src: img });
+	}
+
+	function texture(p: TextureComponent) {
+		const texture = Texture(gl, p);
+
+		render(() => {
+			if (p.dirty) updateTexture(gl, texture, p);
+			program.setTexture(texture);
+			program.color = whiteColor;
+			gl.drawArrays(gl.TRIANGLES, 0, 6);
+		});
+	}
+
+	function fill(p: FillComponent) {
+		render(() => {
+			program.color = p.color || whiteColor;
+			program.setTexture(whiteTexture);
+			gl.drawArrays(gl.TRIANGLES, 0, 6);
+		});
+	}
+
+	function boxComponent(box: BoxComponent) {
+		let M = composeBox(Box(box));
+		render(() => {
+			if (box.dirty) M = composeBox(Box(box));
+			program.pushMatrix(M);
+		});
+	}
 
 	async function load(node: Node) {
-		const { image, children, update, texture } = node;
+		const { children, update } = node;
 		if (update) render(() => update(node));
-		if (node.box) {
-			let M: Matrix, box: Partial<Box>;
-			render(() => {
-				if (node.box) {
-					if (node.box !== box) M = composeBox(Box((box = node.box)));
-					ctx.webgl2.pushMatrix(M);
-				}
-			});
-		}
-		if ('fill' in node) {
-			render(() => {
-				const gl = ctx.webgl2.gl;
-				ctx.webgl2.color = node.fill || whiteColor;
-				ctx.webgl2.setTexture(whiteTexture);
-				gl.drawArrays(gl.TRIANGLES, 0, 6);
-			});
-		}
-		if (texture) components.texture(texture)(ctx);
-		if (image) await components.image(image)(ctx);
+		if (node.box) boxComponent(node.box);
+		if (node.fill) fill(node.fill);
+		if (node.texture) texture(node.texture);
+		if (node.image) await image(node.image);
+
 		if (children) {
 			const nodes = Array.isArray(children)
 				? children
 				: Object.values(children);
 			for (const child of nodes) await load(child);
 		}
-		if (node.box) render(() => ctx.webgl2.popMatrix());
+		if (node.box) render(() => program.popMatrix());
 	}
 
 	await load(p.root);
-	ctx.renderer.start();
 
 	return {
-		start: ctx.renderer.start,
-		pause: ctx.renderer.stop,
+		canvas,
+		start: start,
+		pause: stop,
 		destroy() {
-			ctx.renderer.stop();
+			stop();
 			canvas.remove();
 		},
 	};
@@ -604,16 +590,14 @@ export function renderer() {
 	}
 
 	return {
-		renderer: {
-			render(cb: () => void) {
-				render.push(cb);
-			},
-			start() {
-				renderLoop();
-			},
-			stop() {
-				cancelAnimationFrame(af);
-			},
+		render(cb: () => void) {
+			render.push(cb);
+		},
+		start() {
+			renderLoop();
+		},
+		stop() {
+			cancelAnimationFrame(af);
 		},
 	};
 }

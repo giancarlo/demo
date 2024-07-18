@@ -95,22 +95,25 @@ export function multiply(a, b, dst = new Float32Array(16)) {
     dst[15] = b30 * a3 + b31 * a13 + b32 * a23 + b33 * a33;
     return dst;
 }
-export function updateTexture(gl, { texture, internalFormat, src, }) {
+export function updateTexture(gl, texture, { internalFormat, src }) {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat ?? gl.RGBA, internalFormat ?? gl.RGBA, gl.UNSIGNED_BYTE, src);
 }
-export function Texture(gl, { src, internalFormat, minFilter, }) {
-    minFilter ??= gl.LINEAR;
+export function Texture(gl, o) {
+    o.minFilter ??= gl.LINEAR;
+    o.magFilter ??= o.minFilter;
+    o.wrapS ??= gl.CLAMP_TO_EDGE;
+    o.wrapT ??= o.wrapS;
     const texture = gl.createTexture();
     if (!texture)
         throw new Error('Could not create texture');
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, minFilter);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, minFilter);
-    if (src)
-        updateTexture(gl, { texture, internalFormat, src });
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, o.wrapS);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, o.wrapT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, o.minFilter);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, o.magFilter);
+    if (o.src)
+        gl.texImage2D(gl.TEXTURE_2D, 0, o.internalFormat ?? gl.RGBA, o.internalFormat ?? gl.RGBA, gl.UNSIGNED_BYTE, o.src);
     return texture;
 }
 function ColorTexture(gl, color) {
@@ -132,7 +135,8 @@ out vec4 outColor;
 
 void main() {
     outColor = texture(u_texture, v_texcoord) * (u_color / 255.0);
-}`,
+}
+		`,
         vtx: `#version 300 es
 precision mediump float;
 
@@ -147,7 +151,8 @@ out vec2 v_texcoord;
 void main() {
    gl_Position = p_matrix * u_matrix * a_position;
    v_texcoord = (u_textureMatrix * vec4(a_texcoord, 0, 1)).xy;
-}`,
+}
+		`,
         width,
         height,
     });
@@ -166,6 +171,7 @@ void main() {
     const positionBuffer = gl.createBuffer();
     const texCoordBuffer = gl.createBuffer();
     let u_color = whiteColor;
+    let u_texture;
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
@@ -176,38 +182,42 @@ void main() {
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.enableVertexAttribArray(texCoordLocation);
     gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
-    let M = Matrix();
+    let M = identity;
     const matrixStack = [];
     gl.uniformMatrix4fv(texMatrixLocation, false, M);
     gl.uniformMatrix4fv(matrixLocation, false, M);
     gl.uniform4fv(colorLocation, u_color);
     gl.viewport(0, 0, width, height);
     gl.uniformMatrix4fv(pmatrixLocation, false, orthographic(0, width, height, 0, -1, 1));
+    gl.activeTexture(gl.TEXTURE0);
     return {
-        webgl2: {
-            gl,
-            pushMatrix(m) {
-                matrixStack.push(M);
-                if (m !== identity) {
-                    M = multiply(M, m);
-                    gl.uniformMatrix4fv(matrixLocation, false, M);
-                }
-            },
-            popMatrix() {
-                const M2 = matrixStack.pop();
-                if (!M2)
-                    throw new Error('Matrix stack empty');
-                M = M2;
-                gl.uniformMatrix4fv(matrixLocation, false, M2);
-            },
-            get color() {
-                return u_color;
-            },
-            set color(color) {
+        gl,
+        pushMatrix(m) {
+            matrixStack.push(M);
+            if (m !== identity) {
+                M = M === identity ? m : multiply(M, m);
+                gl.uniformMatrix4fv(matrixLocation, false, M);
+            }
+        },
+        popMatrix() {
+            const M2 = matrixStack.pop();
+            if (!M2)
+                throw new Error('Matrix stack empty');
+            M = M2;
+            gl.uniformMatrix4fv(matrixLocation, false, M2);
+        },
+        get color() {
+            return u_color;
+        },
+        set color(color) {
+            if (color !== u_color)
                 gl.uniform4fv(colorLocation, (u_color = color));
-            },
-            texture: Texture.bind(0, gl),
-            colorTexture: ColorTexture.bind(0, gl),
+        },
+        setTexture(texture) {
+            if (u_texture !== texture) {
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                u_texture = texture;
+            }
         },
     };
 }
@@ -243,52 +253,53 @@ export function Box(box) {
         ...box,
     };
 }
-export function image({ src }) {
-    return async ({ webgl2, renderer, }) => {
-        const gl = webgl2.gl;
-        const img = typeof src === 'string' ? await loadImage(src) : src;
-        const texture = webgl2.texture({ src: img });
-        renderer.render(() => {
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            webgl2.color = whiteColor;
+export async function engine(p) {
+    const program = webgl2(p);
+    const { render, start, stop } = renderer();
+    const gl = program.gl;
+    const whiteTexture = ColorTexture(gl, [255, 255, 255, 255]);
+    const canvas = gl.canvas;
+    async function image(p) {
+        const img = typeof p.src === 'string' ? await loadImage(p.src) : p.src;
+        texture({ ...p, src: img });
+    }
+    function texture(p) {
+        const texture = Texture(gl, p);
+        render(() => {
+            if (p.dirty)
+                updateTexture(gl, texture, p);
+            program.setTexture(texture);
+            program.color = whiteColor;
             gl.drawArrays(gl.TRIANGLES, 0, 6);
         });
-    };
-}
-const components = {
-    image,
-};
-export async function engine(p) {
-    const ctx = {
-        ...webgl2(p),
-        ...renderer(),
-    };
-    const whiteTexture = ctx.webgl2.colorTexture([255, 255, 255, 255]);
-    const render = ctx.renderer.render;
-    const canvas = ctx.webgl2.gl.canvas;
-    document.body.append(canvas);
+    }
+    function fill(p) {
+        render(() => {
+            program.color = p.color || whiteColor;
+            program.setTexture(whiteTexture);
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        });
+    }
+    function boxComponent(box) {
+        let M = composeBox(Box(box));
+        render(() => {
+            if (box.dirty)
+                M = composeBox(Box(box));
+            program.pushMatrix(M);
+        });
+    }
     async function load(node) {
-        const { box, image, children, update, fill } = node;
+        const { children, update } = node;
         if (update)
             render(() => update(node));
-        if (box) {
-            render(() => {
-                const M = composeBox(Box(node.box));
-                ctx.webgl2.pushMatrix(M);
-            });
-        }
-        if (fill) {
-            render(() => {
-                const gl = ctx.webgl2.gl;
-                ctx.webgl2.color = node.fill || whiteColor;
-                gl.activeTexture(gl.TEXTURE0);
-                gl.bindTexture(gl.TEXTURE_2D, whiteTexture);
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-            });
-        }
-        if (image)
-            await components.image(image)(ctx);
+        if (node.box)
+            boxComponent(node.box);
+        if (node.fill)
+            fill(node.fill);
+        if (node.texture)
+            texture(node.texture);
+        if (node.image)
+            await image(node.image);
         if (children) {
             const nodes = Array.isArray(children)
                 ? children
@@ -296,16 +307,16 @@ export async function engine(p) {
             for (const child of nodes)
                 await load(child);
         }
-        if (box)
-            render(() => ctx.webgl2.popMatrix());
+        if (node.box)
+            render(() => program.popMatrix());
     }
     await load(p.root);
-    ctx.renderer.start();
     return {
-        start: ctx.renderer.start,
-        pause: ctx.renderer.stop,
+        canvas,
+        start: start,
+        pause: stop,
         destroy() {
-            ctx.renderer.stop();
+            stop();
             canvas.remove();
         },
     };
@@ -319,16 +330,14 @@ export function renderer() {
         af = requestAnimationFrame(renderLoop);
     }
     return {
-        renderer: {
-            render(cb) {
-                render.push(cb);
-            },
-            start() {
-                renderLoop();
-            },
-            stop() {
-                cancelAnimationFrame(af);
-            },
+        render(cb) {
+            render.push(cb);
+        },
+        start() {
+            renderLoop();
+        },
+        stop() {
+            cancelAnimationFrame(af);
         },
     };
 }
