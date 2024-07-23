@@ -1,0 +1,62 @@
+<script src="https://cdn.jsdelivr.net/npm/@cxl/ui@4"></script>
+<cxl-theme id="themeEl" theme="@cxl/ui/theme-tui.js"></cxl-theme>
+<cxl-application style="height: 480px">
+	<cxl-toolbar dense>
+		<cxl-button flat>File</cxl-button>
+		<cxl-button flat>Edit</cxl-button>
+		<cxl-button flat>View</cxl-button>
+		<cxl-button flat>Search</cxl-button>
+		<cxl-button flat>Run</cxl-button>
+		<cxl-button flat>Debug</cxl-button>
+		<cxl-button flat>Options</cxl-button>
+		<cxl-button onclick="toggle()" style="margin-left: auto" flat
+			>Toggle</cxl-button
+		>
+	</cxl-toolbar>
+	<cxl-c grow color="background">
+		<cxl-field outline>
+			<cxl-label>Untitled</cxl-label>
+			<cxl-textarea style="height: 320px"></cxl-textarea>
+		</cxl-field>
+		<cxl-field outline style="margin: -25px 0 -24px 0">
+			<cxl-label>Immediate</cxl-label>
+			<cxl-textarea style="height: 43px"></cxl-textarea>
+		</cxl-field>
+	</cxl-c>
+	<cxl-toolbar dense color="secondary" style="z-index: 2">
+		<div>F1=Help</div>
+		<div>Enter=Execute</div>
+		<div>Esc=Cancel</div>
+		<div>Tab=Next Field</div>
+		<div>Arrow=Next Item</div>
+	</cxl-toolbar>
+</cxl-application>
+<cxl-dialog id="dialog" visible>
+	<cxl-c pad="16">
+		<cxl-t center
+			>Welcome To<br /><br />
+			Microsoft (R) QuickBASIC Version 4.50<br /><br />
+			(C) Copyright Microsoft Corporation, 1985-1988<br />
+			All rights reserved<br />
+			Simultaneously published in the U.S. and Canada.
+		</cxl-t>
+	</cxl-c>
+	<cxl-t center>
+		<br /><br />
+		<cxl-dialog-close>
+			<cxl-button
+				>Press Enter to see the QuickBASIC Survival Guide</cxl-button
+			>
+		</cxl-dialog-close>
+		<cxl-hr></cxl-hr>
+		<cxl-dialog-close>
+			<cxl-button>Press ESC to clear this dialog box</cxl-button>
+		</cxl-dialog-close>
+	</cxl-t>
+</cxl-dialog>
+<script>
+	function toggle() {
+		themeEl.theme = themeEl.theme ? '' : '@cxl/ui/theme-tui.js';
+		dialog.open();
+	}
+</script>
