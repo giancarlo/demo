@@ -4,7 +4,7 @@
 		"incremental": true,
 		"strict": true,
 		"target": "es2023",
-		"module": "es2020",
+		"module": "es2022",
 		"experimentalDecorators": true,
 		"sourceMap": false,
 		"moduleResolution": "Node",

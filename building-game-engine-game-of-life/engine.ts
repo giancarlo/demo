@@ -1,7 +1,6 @@
 /**
- *
+ * Source code for https://bellido.us/?blog/bulding-a-game-engine---game-of-life
  */
-
 export interface Rect {
 	x: number;
 	y: number;
@@ -407,7 +406,6 @@ void main() {
 	}
 
 	return {
-		//gl,
 		canvas: gl.canvas,
 		pushMatrix(m: Matrix) {
 			matrixStack.push(M);
@@ -513,13 +511,14 @@ export type FillComponent = {
 	color: Color;
 } & Mutable;
 export type BoxComponent = Partial<Box> & Mutable;
+export type Interval = { interval: number; fn: (node: Node) => void };
 
 export interface Node {
 	box?: BoxComponent;
 	image?: ImageComponent;
 	texture?: TextureComponent;
 	children?: Record<string | number, Node>;
-	update?(node: this): void;
+	update?: ((node: Node) => void) | Interval;
 	fill?: FillComponent;
 }
 
@@ -535,8 +534,7 @@ export interface EngineOptions<T> {
 
 export async function engine<T extends Node>(p: EngineOptions<T>) {
 	const program = webgl2(p);
-	const { render, start, stop } = renderer();
-	//const gl = program.gl;
+	const { render, interval, start, stop } = renderer();
 	const whiteTexture = program.createColorTexture([255, 255, 255, 255]);
 	const canvas = program.canvas as HTMLCanvasElement;
 
@@ -585,7 +583,9 @@ export async function engine<T extends Node>(p: EngineOptions<T>) {
 
 	async function load(node: Node) {
 		const { children, update } = node;
-		if (update) render(() => update(node));
+		if (typeof update === 'function') render(() => update(node));
+		else if (update) interval(update, node);
+
 		if (node.box) boxComponent(node.box);
 		if (node.fill) fill(node.fill);
 		if (node.texture) texture(node.texture);
@@ -621,7 +621,9 @@ export async function engine<T extends Node>(p: EngineOptions<T>) {
  */
 export function renderer() {
 	const render: (() => void)[] = [];
+	const intervals: (Interval & { id?: number; node: Node })[] = [];
 	let af: number;
+	let running = false;
 
 	function renderLoop() {
 		for (const p of render) p();
@@ -632,11 +634,21 @@ export function renderer() {
 		render(cb: () => void) {
 			render.push(cb);
 		},
+		interval(int: Interval, node: Node) {
+			intervals.push({ ...int, node });
+		},
 		start() {
+			if (running) throw 'Engine already started';
 			renderLoop();
+			intervals.forEach(
+				int => (int.id = setInterval(int.fn, int.interval, int.node)),
+			);
+			running = true;
 		},
 		stop() {
 			cancelAnimationFrame(af);
+			intervals.forEach(i => clearInterval(i.id));
+			running = false;
 		},
 	};
 }

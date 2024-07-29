@@ -1,4 +1,4 @@
-import { Color, engine } from '../engine/index.js';
+import { Color, engine } from './engine.js';
 
 const Black = [0, 0, 0, 255] as const;
 const White = [255, 255, 255, 255] as const;
@@ -48,6 +48,7 @@ while (seed--) {
 	setColor(pos, Black);
 	points[pos] = 1;
 }
+
 engine({
 	width,
 	height,
@@ -56,17 +57,20 @@ engine({
 	root: {
 		box: { w: width, h: height },
 		texture: { src: map, magFilter: WebGL2RenderingContext.NEAREST },
-		update(node) {
-			for (let i = 0; i < LEN; i++) {
-				const a = neighbours(i);
-				const live = (a === 2 && points[i]) || a === 3;
-				newPoints[i] = live ? 1 : 0;
-				setColor(i, live ? Black : White);
-			}
-			const a = points;
-			points = newPoints;
-			node.texture!.dirty = true;
-			newPoints = a;
+		update: {
+			interval: 400,
+			fn(node) {
+				for (let i = 0; i < LEN; i++) {
+					const a = neighbours(i);
+					const live = (a === 2 && points[i]) || a === 3;
+					newPoints[i] = live ? 1 : 0;
+					setColor(i, live ? Black : White);
+				}
+				const a = points;
+				points = newPoints;
+				node.texture!.dirty = true;
+				newPoints = a;
+			},
 		},
 	},
 });
