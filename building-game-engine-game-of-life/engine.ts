@@ -1,5 +1,5 @@
 /**
- * Source code for https://bellido.us/?blog/bulding-a-game-engine---game-of-life
+ * Source code for https://bellido.us/?blog/ffc57cb2
  */
 export interface Rect {
 	x: number;

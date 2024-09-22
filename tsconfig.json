@@ -4,15 +4,18 @@
 		"incremental": true,
 		"strict": true,
 		"target": "es2023",
-		"module": "es2022",
+		"module": "node16",
 		"experimentalDecorators": true,
 		"sourceMap": false,
-		"moduleResolution": "Node",
+		"moduleResolution": "Node16",
 		"removeComments": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"composite": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"jsx": "react",
+		"jsxFactory": "dom",
+		"jsxFragmentFactory": "dom"
 	},
-	"include": ["**/*.ts"]
+	"include": ["**/*.ts", "**/*.tsx"]
 }
