@@ -4,7 +4,7 @@ import { T } from '@cxl/ui/typography.js';
 import { TextArea } from '@cxl/ui/textarea.js';
 import { dom } from '@cxl/ui/tsx.js';
 import { debounceFunction } from '@cxl/ui/rx.js';
-import { handleKeyboard } from '@cxl/keyboard';
+import { handleKeyboard, normalize } from '@cxl/keyboard';
 
 document.body.append(
 	<>
@@ -34,7 +34,8 @@ document.body.append(
 	"ctrl+alt+shift+enter": "MULTIKEY",
 	"shift+a shift+d": "SHIFT KEY",
 	"alt+a alt+b": "ALT Combination",
-	"up up down down left right left right b a": "KONAMI"
+	"up up down down left right left right b a": "KONAMI",
+	":": "COLON"
 }'
 			></TextArea>
 		</Field>
@@ -75,7 +76,15 @@ function handle(name: string, sequence: string[]) {
 function parse() {
 	const val = bindings.value;
 	try {
-		if (val) keymap = JSON.parse(val);
+		if (val)
+			keymap = Object.entries(JSON.parse(val)).reduce(
+				(acc, [key, value]) => {
+					// The shortcuts are normalized to ensure the library recognizes them correctly.
+					acc[normalize(key)] = value as string;
+					return acc;
+				},
+				{} as Record<string, string>,
+			);
 	} catch (e) {
 		console.error(e);
 	}

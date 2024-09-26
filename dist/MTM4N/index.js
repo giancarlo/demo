@@ -4,7 +4,7 @@ import { T } from '@cxl/ui/typography.js';
 import { TextArea } from '@cxl/ui/textarea.js';
 import { dom } from '@cxl/ui/tsx.js';
 import { debounceFunction } from '@cxl/ui/rx.js';
-import { handleKeyboard } from '@cxl/keyboard';
+import { handleKeyboard, normalize } from '@cxl/keyboard';
 document.body.append(dom(dom, null,
     dom("style", null, `
 			#bindings { font: 16px var(--cxl-font-monospace); }
@@ -20,7 +20,7 @@ document.body.append(dom(dom, null,
     dom("br", null),
     dom(T, { font: "h5" }, " Bindings "),
     dom(Field, { outline: true },
-        dom(TextArea, { id: "bindings", rules: "json", value: '{\n\t"enter": "hello",\n\t"a b c": "ABC",\n\t"ctrl+alt+shift+enter": "MULTIKEY",\n\t"shift+a shift+d": "SHIFT KEY",\n\t"alt+a alt+b": "ALT Combination",\n\t"up up down down left right left right b a": "KONAMI"\n}' }))));
+        dom(TextArea, { id: "bindings", rules: "json", value: '{\n\t"enter": "hello",\n\t"a b c": "ABC",\n\t"ctrl+alt+shift+enter": "MULTIKEY",\n\t"shift+a shift+d": "SHIFT KEY",\n\t"alt+a alt+b": "ALT Combination",\n\t"up up down down left right left right b a": "KONAMI",\n\t":": "COLON"\n}' }))));
 const bindings = document.getElementById('bindings');
 const output = document.getElementById('output');
 let keymap, lastSequence, kbd;
@@ -42,7 +42,10 @@ function parse() {
     const val = bindings.value;
     try {
         if (val)
-            keymap = JSON.parse(val);
+            keymap = Object.entries(JSON.parse(val)).reduce((acc, [key, value]) => {
+                acc[normalize(key)] = value;
+                return acc;
+            }, {});
     }
     catch (e) {
         console.error(e);
