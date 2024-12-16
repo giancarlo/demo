@@ -4,7 +4,7 @@
 	"version": "0.0.0",
 	"devDependencies": {
 		"@cxl/keyboard": "^0.0.2",
-		"@cxl/ui": "^4.0.15",
+		"@cxl/ui": "^4.0.17",
 		"@typescript-eslint/eslint-plugin": "^7.16.0",
 		"@typescript-eslint/parser": "^7.16.0",
 		"eslint": "^8.56.0",
