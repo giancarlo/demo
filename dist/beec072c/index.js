@@ -1,7 +1,8 @@
-import { C } from '@cxl/ui/layout.js';
-import { Field, Label } from '@cxl/ui/field.js';
+import { C } from '@cxl/ui/c.js';
+import { FieldOutlined } from '@cxl/ui/field-outlined.js';
+import { Label } from '@cxl/ui/label.js';
 import { TextArea } from '@cxl/ui/textarea.js';
-import { dom } from '@cxl/ui/tsx.js';
+import { tsx } from '@cxl/ui/component.js';
 class CompilerError {
     message;
     position;
@@ -233,18 +234,18 @@ function each(scan) {
 export function text({ source, start, end }) {
     return source.slice(start, end);
 }
-const input = (dom(TextArea, { id: "input", className: "mono" }));
-const output = (dom(C, { id: "output", className: "mono" }));
-document.body.append(dom("style", null, `
+const input = (tsx(TextArea, { id: "input", className: "mono" }));
+const output = (tsx(C, { id: "output", className: "mono" }));
+document.body.append(tsx("style", null, `
 		.mono { font: var(--cxl-font-code); height: 164px; }
-	`), dom(C, { pad: 16 },
-    dom(Field, { outline: true },
-        dom(Label, null, "Input Text"),
+	`), tsx(C, { pad: 16 },
+    tsx(FieldOutlined, null,
+        tsx(Label, null, "Input Text"),
         input),
-    dom("br", null),
-    dom("br", null),
-    dom(Field, { outline: true },
-        dom(Label, null, "Output"),
+    tsx("br", null),
+    tsx("br", null),
+    tsx(FieldOutlined, null,
+        tsx(Label, null, "Output"),
         output)));
 input.onchange = () => {
     let outText = '';

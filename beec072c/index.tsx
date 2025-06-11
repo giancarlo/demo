@@ -1,7 +1,8 @@
-import { C } from '@cxl/ui/layout.js';
-import { Field, Label } from '@cxl/ui/field.js';
+import { C } from '@cxl/ui/c.js';
+import { FieldOutlined } from '@cxl/ui/field-outlined.js';
+import { Label } from '@cxl/ui/label.js';
 import { TextArea } from '@cxl/ui/textarea.js';
-import { dom } from '@cxl/ui/tsx.js';
+import { tsx } from '@cxl/ui/component.js';
 
 interface Position {
 	start: number;
@@ -292,16 +293,16 @@ document.body.append(
 		.mono { font: var(--cxl-font-code); height: 164px; }
 	`}</style>,
 	<C pad={16}>
-		<Field outline>
+		<FieldOutlined>
 			<Label>Input Text</Label>
 			{input}
-		</Field>
+		</FieldOutlined>
 		<br />
 		<br />
-		<Field outline>
+		<FieldOutlined>
 			<Label>Output</Label>
 			{output}
-		</Field>
+		</FieldOutlined>
 	</C>,
 );
 

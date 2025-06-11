@@ -1,20 +1,21 @@
 import { Chip } from '@cxl/ui/chip.js';
-import { Field } from '@cxl/ui/field.js';
-import { T } from '@cxl/ui/typography.js';
+import { FieldOutlined } from '@cxl/ui/field-outlined.js';
+import { T } from '@cxl/ui/t.js';
 import { TextArea } from '@cxl/ui/textarea.js';
-import { dom } from '@cxl/ui/tsx.js';
+import { tsx } from '@cxl/ui/component.js';
 import { debounceFunction } from '@cxl/ui/rx.js';
 import { handleKeyboard, normalize } from '@cxl/keyboard';
+import { Card } from '@cxl/ui/card.js';
 
 document.body.append(
-	<>
+	<Card pad={16}>
 		<style>{`
 			#bindings { font: 16px var(--cxl-font-monospace); }
 			#output { display: flex; gap: 4px 8px; flex-wrap:wrap; }
 		`}</style>
 		<T font="h5"> Key Strokes </T>
-		<div id="output">
-			<T font="h6" center>
+		<div id="output" tabIndex={0} aria-live="polite">
+			<T font="h6">
 				Click here to start. Keep this window active and press any key.
 				<br />
 				If you press a key that matches one of the bindings below, the
@@ -24,7 +25,7 @@ document.body.append(
 		<br />
 		<br />
 		<T font="h5"> Bindings </T>
-		<Field outline>
+		<FieldOutlined>
 			<TextArea
 				id="bindings"
 				rules="json"
@@ -38,8 +39,8 @@ document.body.append(
 	":": "COLON"
 }'
 			></TextArea>
-		</Field>
-	</>,
+		</FieldOutlined>
+	</Card>,
 );
 
 const bindings = document.getElementById('bindings') as HTMLInputElement;
@@ -59,7 +60,11 @@ function handle(name: string, sequence: string[]) {
 	if (!lastSequence) output.innerHTML = '';
 	const found = keymap[name];
 	if (sequence !== lastSequence) {
-		kbd = (<Chip color="primary">{found || name}</Chip>) as Chip;
+		kbd = (
+			<Chip tabIndex={-1} color="primary">
+				{found || name}
+			</Chip>
+		) as Chip;
 		lastSequence = sequence;
 		output.insertBefore(kbd, output.children[0]);
 	} else {
@@ -98,7 +103,9 @@ handleKeyboard({ element: document.body, onKey: handle });
 // The `bindings` input element has event listeners to intercept key actions:
 //     - `keydown` prevents default behavior to manage global shortcuts without interference.
 //     - Events are set to not propagate when changing `bindings`, isolating it from affecting the main app.
-window.addEventListener('keydown', ev => ev.preventDefault());
+window.addEventListener('keydown', ev => {
+	if (ev.key !== 'Tab') ev.preventDefault();
+});
 bindings.addEventListener('keydown', ev => ev.stopPropagation(), true);
 
 // `debounceFunction` on change ensures efficient updates, parsing input with minimal lag upon changes.

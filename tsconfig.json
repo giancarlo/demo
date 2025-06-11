@@ -4,18 +4,21 @@
 		"incremental": true,
 		"strict": true,
 		"target": "es2023",
-		"module": "node16",
+		"module": "es2022",
 		"experimentalDecorators": true,
 		"sourceMap": false,
-		"moduleResolution": "Node16",
+		"moduleResolution": "Node",
 		"removeComments": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"composite": true,
 		"skipLibCheck": true,
 		"jsx": "react",
-		"jsxFactory": "dom",
-		"jsxFragmentFactory": "dom"
+		"jsxFactory": "tsx",
+		"jsxFragmentFactory": "tsx",
+		"paths": {
+			"ui/*": ["./node_modules/@cxl/ui/*"]
+		}
 	},
 	"include": ["**/*.ts", "**/*.tsx"]
 }
