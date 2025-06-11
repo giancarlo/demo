@@ -11,10 +11,6 @@ import { NavigationGrid } from 'ui/navigation-grid.js';
 import { Row } from 'ui/row.js';
 import { AriaLive } from 'ui/aria-live.js';
 
-/*
-This code is meant as demo for my blog. This post will focus on the rationale behind my UI component choices and, more importantly, the accessibility techniques that let Minesweeper be played entirely with the keyboard and work well with screen readers. I’ll call out which components are involved, how ARIA attributes are put to use, and how keyboard navigation is handled throughout the experience.
-*/
-
 interface Tile {
 	element: HTMLElement;
 	open: boolean;
