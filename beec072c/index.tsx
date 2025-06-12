@@ -306,7 +306,7 @@ document.body.append(
 	</C>,
 );
 
-input.onchange = () => {
+const onInput = () => {
 	let outText = '';
 	const scanner = scan(input.value);
 	const next = () => {
@@ -341,3 +341,5 @@ main var
 # Errors
 0x 0b 0.
 ' Unterminated String`;
+input.oninput = onInput;
+onInput();
