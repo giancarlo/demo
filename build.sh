@@ -9,3 +9,6 @@ cp clock/*.html dist/clock
 mkdir -p dist/minesweeper dist/news
 cp minesweeper/index.html dist/minesweeper
 cp news/index.html dist/news
+
+mkdir -p dist/blog
+cp blog/* dist/blog
