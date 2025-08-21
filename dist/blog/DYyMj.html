@@ -1,0 +1,30 @@
+<script
+	type="module"
+	src="https://cdn.jsdelivr.net/npm/@cxl/ui@5.0.0-beta.19/index.js"
+></script>
+<style>
+	c-chart {
+		width: 640px;
+		max-width: 90%;
+		aspect-ratio: 1 / 1;
+		margin: 16px auto;
+		color: var(--cxl-color-on-surface);
+		background-color: var(--cxl-color-surface);
+		padding: 16px;
+		border-radius: 16px;
+	}
+</style>
+<c-field-bar style="margin: 16px auto; width: 480px">
+	<c-t slot="leading">y =</c-t>
+	<c-input-text id="input" value="sin(x^2) * cos(x)"></c-input-text>
+</c-field-bar>
+<c-chart view="-10 -10 20 20">
+	<c-chart-function worker id="fnChart"></c-chart-function>
+	<c-chart-grid horizontal="auto" vertical="auto"></c-chart-grid>
+	<c-chart-axis axis="y" slot="start"></c-chart-axis>
+	<c-chart-axis axis="x" slot="bottom"></c-chart-axis>
+</c-chart>
+<script type="module">
+	input.oninput = () => (fnChart.fn = input.value);
+	input.oninput();
+</script>
