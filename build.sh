@@ -12,3 +12,4 @@ cp news/index.html dist/news
 
 mkdir -p dist/blog
 cp blog/* dist/blog
+rsync -r --delete ui/ dist/ui/
